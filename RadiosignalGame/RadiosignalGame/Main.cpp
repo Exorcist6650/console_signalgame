@@ -6,54 +6,55 @@
 #include <limits>
 #include <time.h>
 #include <Windows.h>
+#include <memory>
 
 int gameTick = 150;
 
-const int TELESCOPESCOUNT = 8; // Количество телескопов
-const char mapSymbol = '`'; // Cимоволы карты
+const int TELESCOPESCOUNT = 8; // Telescopes quantity
+const char mapSymbol = '`'; 
 const char radioTelescopeSymbol = '%';
 
-// Направление
+const int HEIGHT = 25; // Map Y size
+const int WIDTH = 25; // Map X size
+
+// Direction
 enum Direction{UP, DOWN, LEFT, RIGHT};
 
-// Скрытие курсора
-void сursorInvisible() {
+// Console cursor invisible 
+void СЃursorInvisible() {
 
 	HANDLE console = GetStdHandle(STD_OUTPUT_HANDLE);
-	if (console == INVALID_HANDLE_VALUE) return; // Проверка на некорректность консоли
+	if (console == INVALID_HANDLE_VALUE) return;
 
-	CONSOLE_CURSOR_INFO cursorInfo; // Объект курсора
+	CONSOLE_CURSOR_INFO cursorInfo;
 
-	GetConsoleCursorInfo(console, &cursorInfo); // Ищем курсор
-	cursorInfo.bVisible = false; // Cкрытие курсора
+	GetConsoleCursorInfo(console, &cursorInfo); 
+	cursorInfo.bVisible = false;
 
-	SetConsoleCursorInfo(console, &cursorInfo); // Задаем курсор
+	SetConsoleCursorInfo(console, &cursorInfo); 
 }
 
-// Отчистка std::cin при вызове ввода
+// std::cin clear
 void clearConsoleInput() {
 	HANDLE hStdin = GetStdHandle(STD_INPUT_HANDLE);
 	FlushConsoleInputBuffer(hStdin);
 }
 
-struct Player; // Прототип структуры игрока
-struct Map; // Прототип структуры позиций
+struct Player; 
+struct Map; 
 
-// Базовый класс позиции
+// Base Position class
 class Position {
 	friend Player;
 public:
-	// Конструктор
 	Position(const int x, const int y, const char symbol) {
 		this->x = x;
 		this->y = y;
 		this->symbol = symbol;
 	}
 
-	// Создание объекта на позиции
-	void positionCreate(Map& map);
+	void positionCreate(Map& map); 
 
-	// Удаление объекта на позиции
 	void positionClear(Map& map);
 
 protected:
@@ -63,49 +64,48 @@ protected:
 };
 
 
-// Класс телескопа
+// Telescope class (Position inheritance)
 class Telescope : public Position {
 public:
-	// Конструктор
 	Telescope(const int x, const int y, const char symbol, std::string name) : Position(x, y, symbol) {
 		workStatus = true;
 		this->name = name;
 	};
-
-	// Починка телескопа
+	
+	// Open telescope menu
 	void repair() {
 		bool isOpen = true;
 
 		while (isOpen) {
 			if (!workStatus) {
-				system("cls"); // Очистка экрана
-				// Генерация примера
+				system("cls"); // Console clear
+				// Example generation
 				int userInput;
 				int a = std::rand() % 9;
 				int b = std::rand() % 9;
 				int result = a + b;
 
-				// Вывод примера
+				// Example display
 				std::cout << "\n\n\n\n\n\n\n\n\n\n\n\t\t" << a << " + " << b << " = ";
-				clearConsoleInput(); // Очистка std::cin от нажатия клавиш
+				clearConsoleInput();
 
-				std::cin >> userInput; // Считывание ввода пользователя
+				std::cin >> userInput; 
 
-				// Корректный ответ
+				// Answer correct
 				if (userInput == result) {
 					workStatus = true;
 					std::cout << " Congratulations! Telescope " << name << " is repair!" << std::endl;
 					std::this_thread::sleep_for(std::chrono::milliseconds(1500));
 					isOpen = false;
 				}
-				// Некорректный ответ
+				// Answer incorrect
 				else {
 					std::cout << "\t\tNot correct" << std::endl;
 					isOpen = false;
 					std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 				}
 			}
-			// Телескоп уже работает
+			// Telescope is already working 
 			else {
 				system("cls");
 				std::cout << "\n\n\n\n\n\n\n\n\n\n\n\n\t" << name << " telescope is already working" << std::endl;
@@ -115,12 +115,12 @@ public:
 		}
 	}
 
-	// Выведение из строя
+	// Change work status
 	void telescopeBreak() {
 		workStatus = false;
 	}
 
-	bool GetWorkStatus() const { return workStatus; } // Геттер статуса
+	bool GetWorkStatus() const { return workStatus; } 
 
 private:
 	std::string name;
@@ -128,49 +128,31 @@ private:
 };
 
 
-// Cтруктура карты
 struct Map {
-public:
+	std::shared_ptr<char[][WIDTH]> field; // Map
 
-	// Конструктор
-	Map(const int HEIGHT, const int WIDTH) {
-		this->HEIGHT = HEIGHT;
-		this->WIDTH = WIDTH;
+	Map() : field(new char[HEIGHT][WIDTH]) {} // Allocate map memory
 
-		field = new char*[HEIGHT]; // Выделение памяти для массива указателей
-		for (int i = 0; i < HEIGHT; i++) {
-			field[i] = new char[WIDTH]; // Выделение памяти для каждого указателя
-		}
-	}
-	// Деструктор
-	~Map() {
-		for (int i = 0; i < HEIGHT; i++) {
-			delete [] field[i]; // Удаление памяти для каждого указателя
-		}
-		delete[] field; // Удаление памяти для массива указателей
-	}
-
-
-	// Инициализация карты
+	// Map initilization
 	void mapInitialize(Telescope telescopes[], Position obj1, Position obj2) {
-		// Заполнение карты символами
+		
 		for (int i = 0; i < HEIGHT; i++) {
 			for (int j = 0; j < WIDTH; j++) {
 				field[i][j] = mapSymbol;
 			}
 		}
-		// Генерация телескопов
+		// Telescopes map creating
 		for (int i = 0; i < TELESCOPESCOUNT; i++) {
 			telescopes[i].positionCreate(*this);
 		}
-		// Генерация остальных объектов
+		// Objects map creating
 		obj1.positionCreate(*this);
 		obj2.positionCreate(*this);
 	}
 
-	// Отображение игры
+	// Game display
 	void mapDisplay() const {
-		system("cls"); // Очистка дисплея
+		system("cls"); // Console clear
 		for (int i = 0; i < HEIGHT; i++) {
 			for (int j = 0; j < WIDTH; j++) {
 				std::cout << field[i][j] << ' ';
@@ -178,12 +160,10 @@ public:
 			std::cout << std::endl;
 		}
 	}
-	char** field; // Массив указателей
-	int HEIGHT; // Длина 
-	int WIDTH; // Ширина
+	
 };
 
-// Вынесение методов класса за его границы
+// Position methods
 void Position::positionCreate(Map& map) {
 	map.field[y][x] = symbol;
 }
@@ -193,53 +173,53 @@ void Position::positionClear(Map& map)
 }
 
 
-// Структура компьютера
+// Computer struct (Position inheritance)
 struct Computer : public Position {
-	//Конструктор
+	
 	Computer(const int x, const int y, const char symbol) : Position(x, y, symbol) {};
 
-	// Использование компьютера
+	// Computer menu open
 	void use(Telescope telescopeObjects[]) {
-		bool isOpen = true; // Внешнее меню
-		bool savingMenu = true; // Вложенное меню
+		bool isOpen = true; 
+		bool savingMenu = true; 
 		static int savedSignalsCounter = 0;
 
 		while (isOpen) {
-			int userInput; // Пользовательский ввод
-			int searchTime = 3 + std::rand() % 8; // Случайное время поиска сигнала
-			int chance = std::rand() % 3; // Шанс поломки телескопа
+			int userInput; 
+			int searchTime = 3 + std::rand() % 8; // Signal search random time 
+			int chance = std::rand() % 3; // Telescope break chance
 		
-			bool isAllTelescopesOperational = true; // Функциональность телескопов
+			bool isAllTelescopesOperational = true; // All telescopes is operational
 
-			clearConsoleInput(); // Очистка std::cin от нажатия клавиш
+			clearConsoleInput(); 
 	
-			system("cls"); // Очистка экрана
+			system("cls"); // Console clear
 
-			// Проверка всех телескопов на функциональность
+			// Examination of working all the telescopes
 			for (int i = 0; i < TELESCOPESCOUNT; i++) {
 				if (telescopeObjects[i].GetWorkStatus() == false) isAllTelescopesOperational = false;
 			}
-			
+			// All is operational
 			if (isAllTelescopesOperational) {
-				std::cout << "\t\tComputer menu\n\nSaved signals - " << savedSignalsCounter << "\n1.Find signal\n2.Exit" << std::endl; // Первый слой интерфейса
+				std::cout << "\t\tComputer menu\n\nSaved signals - " << savedSignalsCounter << "\n1.Find signal\n2.Exit" << std::endl; // РџРµСЂРІС‹Р№ СЃР»РѕР№ РёРЅС‚РµСЂС„РµР№СЃР°
 
-				std::cin >> userInput; // Считывание ввода
+				std::cin >> userInput;
 
 				switch (userInput) {
 				case 1:
-					for (int counter = 0; counter < searchTime; counter++) { // Загрузка (второй слой интерфейса)
-						system("cls"); // Очистка экрана
+					for (int counter = 0; counter < searchTime; counter++) { // Saving process
+						system("cls"); // РЎonsole clear
 						std::cout << "\n\t\tSearching " << counter << " seconds..." << std::endl;
 						std::this_thread::sleep_for(std::chrono::milliseconds(1000));
 					}
-					system("cls"); // Очистка экрана
-					std::cout << "\t\tSignal is find!\n\n1. Save the signal\n2. Delete the signal" << std::endl; // Третий слой интерфейса
+					system("cls"); // РЎonsole clear
+					std::cout << "\t\tSignal is find!\n\n1. Save the signal\n2. Delete the signal" << std::endl; // Saving menu
 
 
-					std::cin >> userInput; // Считывание ввода
+					std::cin >> userInput; 
 
 					while (savingMenu) {
-						system("cls"); // Очистка экрана
+						system("cls"); // РЎonsole clear
 
 						switch (userInput) {
 						case 1:
@@ -257,7 +237,7 @@ struct Computer : public Position {
 					}
 
 					if (!(chance))
-						randomTelescopeBreak(telescopeObjects); // С шансом 33% ломается один телескоп
+						randomTelescopeBreak(telescopeObjects); // 33% telescope breaking chance
 					break;
 
 				case 2:
@@ -265,6 +245,7 @@ struct Computer : public Position {
 					break;
 				}
 			}
+			// One of the telescopes is not operational
 			else {
 				std::cout << "\n\t\tOne of the telescopes is not working" << std::endl;
 				std::this_thread::sleep_for(std::chrono::milliseconds(1500));
@@ -273,27 +254,25 @@ struct Computer : public Position {
 			
 		}
 	}
-
-	// Поломка рандомного телескопа
 	void randomTelescopeBreak(Telescope telescopeObjects[]) {
-		int i = std::rand() % 7;
+		int i = std::rand() % 8;
 		telescopeObjects[i].telescopeBreak();
 	}
 };
 
 
-// Структура игрока
+// Player struct (inharitance)
 struct Player : public Position {
-	// Конструктор
+	
 	Player(const int x, const int y, const char symbol) : Position(x, y, symbol) {};
 
-	// Движение
+	// Player moving
 	void move(const Direction direction, Map& map) {
 		switch (direction) {
 		case UP:
-			// Проверка на выход за карту
+			// Map boundary check
 			if (y) {
-				// Проверка на столкновение
+				// Collizion check
 				if (map.field[y - 1][x] == mapSymbol) {
 					this->positionClear(map);
 					y--;
@@ -302,9 +281,9 @@ struct Player : public Position {
 			}
 			break;
 		case DOWN:
-			// Проверка на выход за карту
-			if (y < map.HEIGHT - 1) {
-				// Проверка на столкновение
+			// Map boundary check
+			if (y < HEIGHT - 1) {
+				// Collizion check
 				if (map.field[y + 1][x] == mapSymbol) {
 					this->positionClear(map);
 					y++;
@@ -313,9 +292,9 @@ struct Player : public Position {
 			}
 			break;
 		case LEFT:
-			// Проверка на выход за карту
+			// Map boundary check
 			if (x) {
-				// Проверка на столкновение
+				// Collizion check
 				if (map.field[y][x - 1] == mapSymbol) {
 					this->positionClear(map);
 					x--;
@@ -324,9 +303,9 @@ struct Player : public Position {
 			}
 			break;
 		case RIGHT:
-			// Проверка на выход за карту
-			if (x < map.WIDTH - 1) {
-				// Проверка на столкновение
+			// Map boundary check
+			if (x < WIDTH - 1) {
+				// Collizion check
 				if (map.field[y][x + 1] == mapSymbol) {
 					this->positionClear(map);
 					x++;
@@ -336,7 +315,7 @@ struct Player : public Position {
 			break;
 		}
 	}
-	// Дистанция до объекта
+	// Distance to object
 	double objectDistance(const Position object) const {
 		return sqrt((pow((object.x - x), 2) + pow((object.y - y), 2)));
 	}
@@ -344,32 +323,32 @@ struct Player : public Position {
 
 
 int main() {
-	srand(time(NULL)); // Сброс привязки ко времени
+	srand(time(NULL));
 
-	Map map0(25, 25); // Карта
-	Player player(map0.WIDTH / 2, map0.WIDTH / 2, 'i'); // Игрок
-	Computer computer(map0.WIDTH / 2 - 2, map0.HEIGHT / 2 - 2, 'L'); // Компьютер
+	Map map0; // Map
+	Player player(WIDTH / 2, WIDTH / 2, 'i'); // Player
+	Computer computer(WIDTH / 2 - 2, HEIGHT / 2 - 2, 'L'); // Computer
 
-	// Объявление массива телескопов
+	// РћР±СЉСЏРІР»РµРЅРёРµ РјР°СЃСЃРёРІР° С‚РµР»РµСЃРєРѕРїРѕРІ
 	Telescope telescopes[TELESCOPESCOUNT]{ 
-		{map0.WIDTH / 2, 1, radioTelescopeSymbol, "North"}, 
-		{map0.WIDTH - 3, 2, radioTelescopeSymbol, "North-East"},
-		{map0.WIDTH - 2, map0.HEIGHT / 2, radioTelescopeSymbol, "East"},
-		{2, map0.HEIGHT - 3, radioTelescopeSymbol, "South-East"},
-		{map0.WIDTH / 2, map0.HEIGHT - 2, radioTelescopeSymbol, "South"},
-		{map0.WIDTH - 3, map0.HEIGHT - 3, radioTelescopeSymbol, "South-West"},
-		{1, map0.HEIGHT / 2, radioTelescopeSymbol, "West"},
+		{WIDTH / 2, 1, radioTelescopeSymbol, "North"}, 
+		{WIDTH - 3, 2, radioTelescopeSymbol, "North-East"},
+		{WIDTH - 2, HEIGHT / 2, radioTelescopeSymbol, "East"},
+		{2, HEIGHT - 3, radioTelescopeSymbol, "South-East"},
+		{WIDTH / 2, HEIGHT - 2, radioTelescopeSymbol, "South"},
+		{WIDTH - 3, HEIGHT - 3, radioTelescopeSymbol, "South-West"},
+		{1, HEIGHT / 2, radioTelescopeSymbol, "West"},
 		{2, 2, radioTelescopeSymbol, "North-West"}
 	};
 
-	map0.mapInitialize(telescopes, player, computer); // Инициализация карты
-	сursorInvisible(); // Скрытие курсора
-	map0.mapDisplay(); // Первоначальное отображение карты
+	map0.mapInitialize(telescopes, player, computer); // РРЅРёС†РёР°Р»РёР·Р°С†РёСЏ РєР°СЂС‚С‹
+	СЃursorInvisible(); // РЎРєСЂС‹С‚РёРµ РєСѓСЂСЃРѕСЂР°
+	map0.mapDisplay(); // РџРµСЂРІРѕРЅР°С‡Р°Р»СЊРЅРѕРµ РѕС‚РѕР±СЂР°Р¶РµРЅРёРµ РєР°СЂС‚С‹
 	
 	bool playing = true;
 	while (playing) {
 
-		// Считывание клавиш управления
+		// Game control keys
 		if (GetAsyncKeyState('W') & 0x8000)
 			player.move(UP, map0);
 		if (GetAsyncKeyState('S') & 0x8000)
@@ -379,24 +358,23 @@ int main() {
 		if (GetAsyncKeyState('D') & 0x8000)
 			player.move(RIGHT, map0);
 		if (GetAsyncKeyState(VK_ESCAPE) & 0x8000) 
-			playing = false; // Завершение игры
+			playing = false; // Quit the game
 
 		if (GetAsyncKeyState('E') & 0x8000) {
-			// Считывание дистанции для каждого телескопа (расстояние 1)
+			// Telescope distance checking
 			for (int i = 0; i < TELESCOPESCOUNT; i++) {
-				// Функция подсчета расстояния до объекта по гипотенузе
 				if (player.objectDistance(telescopes[i]) <= 1.5) telescopes[i].repair();
 			}
-			// Функция подсчета расстояния до компьютера по гипотенузе
+			// Computer distance checking
 			if (player.objectDistance(computer) <= 1.5) {
 				computer.use(telescopes);
 			}
 		}
 
-		map0.mapDisplay(); // Отображение дисплея
-		std::this_thread::sleep_for(std::chrono::milliseconds(gameTick)); // Игровой тик
+		map0.mapDisplay(); // Game display
+		std::this_thread::sleep_for(std::chrono::milliseconds(gameTick)); // Game tick
 	}
-	system("cls");
+	system("cls"); // Console clear;
 
 	return 0;
 }
