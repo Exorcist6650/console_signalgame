@@ -1,0 +1,3 @@
+﻿  Main.cpp
+C:\Users\Admin\Desktop\C++\Практика\RadiosignalGame\RadiosignalGame\Main.cpp(347,12): warning C4244: аргумент: преобразование "time_t" в "unsigned int", возможна потеря данных
+  RadiosignalGame.vcxproj -> C:\Users\Admin\Desktop\C++\Практика\RadiosignalGame\x64\Debug\RadiosignalGame.exe
